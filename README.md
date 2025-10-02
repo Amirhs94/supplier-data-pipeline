@@ -44,3 +44,75 @@ The supplier's data feed is notoriously unreliable. It contains inconsistencies,
 
 ## Disclaimer: Data and Evaluation Criteria
 Please be advised that the datasets utilized in this project are synthetically generated and intended for illustrative purposes only. Furthermore, they have been significantly reduced in terms of sample size and the number of features to streamline the exercise. They do not represent or correspond to any actual business data. The primary objective of this evaluation is to assess the problem-solving methodology and the strategic approach employed, not necessarily the best possible tailored solution for the data. 
+
+
+## Report
+---------------------------------------------
+
+I made three python scripts: transform, load to db, and analyze.
+The transform script tries to change the supplier and our data by:
+Supplier used mixed formats like "Low Stock", "OOS", "1,200", "12.3.4", and "5k".
+I created parse_stock_level()
+Converted human labels → numeric:
+"Low Stock" → 5
+"Out of Stock" → 0
+"In Stock" → 10
+Removed commas and handled magnitude suffixes: "5k" → 5000, "3M" → 3,000,000.
+Fixed malformed decimals: "12.3.4" → 12.34.
+Cleaned formats such as "USD 35.5", "N/A", "23,000".
+Converted to floats; set invalid or missing to NaN.
+Imputed missing cost prices using the median cost within each category, ensuring more realistic estimates than global mean or zero-fill.
+for the time and date i used cursor ai and chatgpt to know what is the date types used in the dataset. 
+Supplier’s entry_date field had:
+Excel serial numbers → converted using Excel epoch (1899-12-30).
+UNIX timestamps → converted using pd.to_datetime(..., unit='s').
+ISO timestamps with "T" separator → normalized to "YYYY-MM-DD HH:MM:SS".
+Invalid or empty dates were set to NaT.
+Finally we did a left joint so that we do not lose any of the data of the supplier and put our database marks on them. The result was a clean supplier csv that was ready to be uploaded into our database. 
+## Database
+In the load to db file I created a lightweight SQLite DB parts_avatar.db with two tables: product_metadata and supplier-clean
+and added the cleaned csv into these tables. 
+
+## Analyze
+I used src/analyze.py to answer business questions. I uploaded the results in this repo. to quickly answer the questions:
+1 - What is the average cost price per product category? 
+Suspension	233.04317433516300
+Brakes	229.97962281992000
+Filters	229.86967819404400
+Engine	228.69060179640700
+Electronics	226.97163796814500
+HVAC	226.68700486618000
+Exhaust	224.52987508838100
+
+2 - Which top 5 parts have the highest stock levels right now?
+supplier_part_id	category	stock_level_clean
+SP-471		Electronics	493.0
+SP-200		HVAC	492.0
+SP-345		Electronics	492.0
+SP-305		Suspension	490.0
+SP-228		Electronics	489.0
+
+3 - How has the number of new parts entries from this supplier changed over time (on a monthly basis)?
+month	new_parts
+2024-01	1593
+2024-02	1478
+2024-03	1607
+2024-04	1546
+2024-05	1594
+2024-06	1590
+2024-07	1612
+2024-08	1677
+2024-09	1555
+2024-10	1647
+2024-11	1578
+2024-12	1614
+2025-01	1565
+2025-02	1395
+2025-03	1647
+2025-04	1559
+2025-05	1630
+2025-06	1536
+2025-07	1577
+
+I made two report graphs one is for this trend and the other one for the cost per category. 
+In order to run this data set you need to run Transform.py first then load to db then analyze.py. This ensures that the previous step has done it's job. we can automate this process so that whenever a new csv of a new supplier comes to our office, the automation runs these steps and stores it in our newly created database. 
